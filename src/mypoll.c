@@ -21,7 +21,9 @@ retry:
         goto out;
     }
     for (uint8_t i = 0; ready != 0 || i < nfds; i++) {
-        if (fds[i].revents == 0) continue;
+        if (fds[i].revents == 0) {
+            continue;
+        }
         if (fds[i].revents & POLLIN) {
             MyRead();
             ready--;
@@ -40,17 +42,27 @@ err:
     return 1;
 }
 
-void AddPollfd(struct pollfd *fds, nfds_t *nfds, int fd, short events) {
+int AddPollfd(struct pollfd *fds, nfds_t *nfds, nfds_t max_nfds, int fd,
+              short events) {
+    if ((*nfds + 1) >= max_nfds) {
+        return -1;
+    }
     fds[*nfds].fd = fd;
     fds[*nfds].events = events;
     (*nfds)++;
+    return 0;
 }
 
-void DelPollfd(struct pollfd *fds, nfds_t *nfds, uint8_t del_size) {
+int DelPollfd(struct pollfd *fds, nfds_t *nfds, uint8_t del_size) {
     (*nfds)--;
+    if (*nfds < del_size) {
+        (*nfds)++;
+        return -1;
+    }
     fds[del_size] = fds[*nfds];
     fds[*nfds].fd = -1;
     fds[*nfds].revents = 0;
+    return 0;
 }
 
 void MyRead() {}

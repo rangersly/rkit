@@ -36,16 +36,16 @@ add_compile_options(-Wall -Wextra)
 # ============================================================
 # 静态库:C 实现,对外公开 include/ 下的头文件
 # ============================================================
-#add_library(math_utils STATIC
-#    src/math_utils.c
-#)
-#
-#target_include_directories(math_utils
-#    PUBLIC
-#        ${CMAKE_CURRENT_SOURCE_DIR}/include
-#    PRIVATE
-#        ${CMAKE_CURRENT_SOURCE_DIR}/src
-#)
+add_library(mypoll STATIC
+    src/mypoll.c
+)
+
+target_include_directories(mypoll
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
 # ============================================================
 # 可执行程序:C++ 实现,链接上面的 C 静态库
@@ -54,10 +54,10 @@ add_executable(app
     src/main.c
 )
 
-#target_link_libraries(app
-#    PRIVATE
-#        math_utils
-#)
+target_link_libraries(app
+    PRIVATE
+        mypoll
+)
 
 # ============================================================
 # 测试:CTest,可用 -DBUILD_TESTING=OFF 关闭

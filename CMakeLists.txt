@@ -62,15 +62,15 @@ target_link_libraries(app
 # ============================================================
 # 测试:CTest,可用 -DBUILD_TESTING=OFF 关闭
 # ============================================================
-#include(CTest)
-#
-#if(BUILD_TESTING)
-#    add_executable(test_math_utils
-#        tests/test_math_utils.cpp
-#    )
-#    target_link_libraries(test_math_utils
-#        PRIVATE
-#            math_utils
-#    )
-#    add_test(NAME math_utils_test COMMAND test_math_utils)
-#endif()
+include(CTest)
+
+if(BUILD_TESTING)
+    add_executable(tests
+        tests/test.c
+    )
+    target_link_libraries(tests
+        PRIVATE
+            mypoll
+    )
+    add_test(NAME tests COMMAND tests)
+endif()

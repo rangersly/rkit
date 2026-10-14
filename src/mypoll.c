@@ -71,7 +71,7 @@ int PollerCreate(nfds_t max_fds) {
     return 0;
 }
 
-void PollerDestory() {
+void PollerDestory(void) {
     free(poller.fds);
     free(poller.user_data);
     free(poller.ready);
@@ -88,6 +88,11 @@ int PollerAdd(int fd, short events, void *user_data) {
     if (poller.fds == NULL) {
         return -1;  // poller未创建即使用
     }
+    for (nfds_t i = 0; i < poller.nfds; i++) {
+        if (poller.fds[i].fd == fd && poller.fds[i].events == events) {
+            return -3;  // 已存在相同的(fd, events)项
+        }
+    }
     if (poller.nfds >= poller.capacity) {
         return -2;  // 超过申请的最大fd数量,无法继续添加
     }
@@ -98,12 +103,12 @@ int PollerAdd(int fd, short events, void *user_data) {
     return 0;
 }
 
-int PollerDel(int fd) {
+int PollerDel(int fd, short events) {
     if (poller.fds == NULL) {
         return -1;  // poller未创建即使用
     }
     for (nfds_t i = 0; i < poller.nfds; i++) {
-        if (poller.fds[i].fd != fd) {
+        if (poller.fds[i].fd != fd || poller.fds[i].events != events) {
             continue;
         }
         nfds_t tail = poller.nfds - 1;
@@ -153,7 +158,7 @@ int PollerRun(int timeout_ms, poller_cb callback, int *err_fd) {
         if (revents & (POLLERR | POLLHUP | POLLNVAL)) {
             fprintf(stderr, "PollerRun: fd %d revents error, please close\n",
                     fd);
-            PollerDel(fd);
+            PollerDel(fd, poller.ready[i].events);
             if (err_fd != NULL) {
                 *err_fd = fd;
             }

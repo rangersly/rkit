@@ -7,7 +7,7 @@
 
 #define MAX_POLL 100
 
-int main() {
+int main(void) {
     printf("mypoll demo run!\n");
     PollerCreate(MAX_POLL);
     PollerAdd(STDIN_FILENO, POLLIN, NULL);

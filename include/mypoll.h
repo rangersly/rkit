@@ -7,57 +7,108 @@
 extern "C" {
 #endif  // __cplusplus
 
-// 回调函数格式定义
+/**
+ * @file mypoll.h
+ * @brief 基于 poll(2) 的轻量级事件监听池封装。
+ *
+ * 提供一个进程级的全局事件循环：用 PollerAdd 注册待监听的 (fd, events)
+ * 组合，用 PollerRun 阻塞等待并按回调分发就绪事件，用 PollerDel 注销单个
+ * 监听项，用 PollerDestory 释放全部资源。
+ *
+ * @warning 本库使用全局静态状态，同一进程内只存在一个监听池，且非线程安全。
+ *          多线程或多监听池场景请自行加锁或改用有状态句柄式实现。
+ */
+
+/**
+ * @brief 事件就绪回调函数类型。
+ *
+ * @param[in] fd        触发事件的监听文件描述符。
+ * @param[in] revents   就绪事件位掩码，取值可能为 POLLIN、POLLOUT、
+ *                      POLLERR、POLLHUP、POLLNVAL 等的按位或。
+ * @param[in] user_data 注册该 (fd, events) 时传入的用户指针，可为 NULL。
+ */
 typedef void (*poller_cb)(int fd, short revents, void *user_data);
 
-/*
- * PollerCreate : 创建poller监听池
- * max_fds : 申请的最大监听fd数量,建议根据服务要求进行设置,不建议超过 1024
- * Return :
- * 0  ->  正常退出
- * -1 ->  内存空间申请失败
+/**
+ * @brief 创建（或重建）全局监听池。
+ *
+ * @param[in] max_fds 允许注册的最大 (fd, events) 项数，建议不超过 1024；
+ *                    传 0 视为非法参数。
+ *
+ * @return 错误码。
+ * @retval 0 创建成功。
+ * @retval -1 max_fds 为 0，或内存申请失败。
+ *
+ * @note 若监听池已存在，会先释放旧池再按新容量重建。
+ * @see PollerDestory
  */
 int PollerCreate(nfds_t max_fds);
 
-/*
- * PollerDestory : 注销poller监听池,释放空间,可再次创建
+/**
+ * @brief 注销全局监听池并释放其占用的内存。
+ *
+ * @note 可重复调用；调用后可用 PollerCreate 重新创建。
+ * @warning 仅释放监听池自身资源，不会关闭任何已注册的 fd，
+ *          相关 fd 需由调用方自行关闭。
+ * @see PollerCreate
  */
 void PollerDestory(void);
 
-/*
- * PollerAdd : 向poller中添加监听fd
- *  fd : 监听的文件描述符
- *  events : 监听的事件(POLLIN可读 | POLLOUT可写)
- *  user_data : 需要保存的用户数据,连接数据等
- * 同一个fd允许重复添加,以events区分;但完全相同的(fd, events)只允许存在一项
- * Return :
- *  -1 -> poller监听池未创建
- *  -2 -> poller监听池已满
- *  -3 -> 已存在相同的(fd, events)项
+/**
+ * @brief 向监听池注册一个待监听的 (fd, events) 组合。
+ *
+ * @param[in] fd        监听的文件描述符。
+ * @param[in] events    监听的事件，为 POLLIN、POLLOUT 的按位或。
+ * @param[in] user_data 用户指针，事件触发时原样回传给回调，可为 NULL。
+ *
+ * @return 错误码。
+ * @retval  0 注册成功。
+ * @retval -1 监听池未创建。
+ * @retval -2 监听池已满，已达 PollerCreate 指定的 max_fds。
+ * @retval -3 已存在完全相同的 (fd, events) 项。
+ *
+ * @note 同一个 fd 可用不同的 events 重复注册；但 (fd, events) 组合必须唯一。
+ * @see PollerDel
  */
 int PollerAdd(int fd, short events, void *user_data);
 
-/*
- * PollerDel : 删除监听池中(fd, events)匹配的项,不保证保持原顺序
- *  fd : 要删除的监听文件描述符
- *  events : 要删除项监听的events,须与添加时一致
- * Return :
- *  0  -> 正常退出
- *  -1 -> 监听池未创建
- *  -2 -> 未找到需要删除的内容
+/**
+ * @brief 注销监听池中与 (fd, events) 完全匹配的项。
+ *
+ * @param[in] fd     要注销的文件描述符。
+ * @param[in] events 注册该项时使用的 events，必须完全一致。
+ *
+ * @return 错误码。
+ * @retval  0 注销成功。
+ * @retval -1 监听池未创建。
+ * @retval -2 未找到匹配的 (fd, events) 项。
+ *
+ * @note 删除采用末尾元素填补，不保证剩余项的顺序。
+ * @see PollerAdd
  */
 int PollerDel(int fd, short events);
 
-/*
- * PollerRun : 处理监听池中的连接
- *  timeout_ms : 等待事件的时间,-1为无限等待,单位是ms
- *  callback : 用户自定义的处理函数
- *  err_fd : 出错fd的输出参数,可为NULL,仅当返回1时被写入
- * Return :
- *  0  -> 正常退出
- *  -1 -> 监听池未创建或callback为空
- *  -2 -> poll函数内部错误
- *  1  -> 存在出错fd,已自动移出监听池并通过*err_fd返回,需手动关闭
+/**
+ * @brief 等待并分发监听池中已就绪的事件。
+ *
+ * 阻塞至多 timeout_ms，然后对本轮就绪的每个 (fd, events) 调用 callback。
+ * 本轮就绪事件在调用前已快照，回调执行期间可安全地调用 PollerAdd /
+ * PollerDel，不会破坏本轮遍历或丢失已就绪事件。
+ *
+ * @param[in]  timeout_ms 等待超时（毫秒），-1 表示无限等待。
+ * @param[in]  callback   事件就绪回调，不可为 NULL。
+ * @param[out] err_fd     出错 fd 的输出参数，可为 NULL；仅在返回 1 时写入。
+ *
+ * @return 处理结果。
+ * @retval  0 正常返回，可能处理了若干事件，也可能超时。
+ * @retval -1 监听池未创建，或 callback 为 NULL。
+ * @retval -2 poll(2) 调用出错，具体原因打印到 stderr。
+ * @retval  1 发现出错的 fd（revents 含 POLLERR/POLLHUP/POLLNVAL）：该
+ *            项已自动移出监听池，出错 fd 通过 *err_fd 返回，调用方需自行关闭。
+ *
+ * @warning 出错项会被自动移出监听池；若同一 fd 注册了多项，仅移除出错的该项，
+ *          其余项仍保留。
+ * @note 当 revents 同时包含普通事件与错误标志时，先回调再返回错误。
  */
 int PollerRun(int timeout_ms, poller_cb callback, int *err_fd);
 

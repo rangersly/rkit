@@ -10,7 +10,7 @@
 int main() {
     printf("mypoll demo run!\n");
     PollerCreate(MAX_POLL);
-    PollerAdd(MAX_POLL, STDIN_FILENO, POLLIN);
+    PollerAdd(STDIN_FILENO, POLLIN, NULL);
 
     return 0;
 }

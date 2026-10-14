@@ -23,22 +23,32 @@ static poller_t poller = {
     .fds = NULL, .user_data = NULL, .capacity = 0, .nfds = 0};
 
 int PollerCreate(nfds_t max_fds) {
-    poller.fds = (struct pollfd *)calloc(max_fds, sizeof(struct pollfd));
-    if (poller.fds == NULL) {
-        perror("PollerCreate fail");
+    if (max_fds == 0) {
         return -1;
     }
-    poller.user_data = calloc(max_fds, sizeof(void *));
+    struct pollfd *fds = (struct pollfd *)calloc(max_fds, sizeof(struct pollfd));
+    if (fds == NULL) {
+        perror("PollerCreate: fds calloc fail");
+        return -1;
+    }
+    void **user_data = calloc(max_fds, sizeof(void *));
+    if (user_data == NULL) {
+        perror("PollerCreate: user_data calloc fail");
+        free(fds);
+        return -1;
+    }
+    free(poller.fds);
+    free(poller.user_data);
+    poller.fds = fds;
+    poller.user_data = user_data;
     poller.capacity = max_fds;
     poller.nfds = 0;
     return 0;
 }
 
 void PollerDestory() {
-    if (poller.fds != NULL) {
-        free(poller.fds);
-        free(poller.user_data);
-    }
+    free(poller.fds);
+    free(poller.user_data);
     poller.fds = NULL;
     poller.user_data = NULL;
     poller.capacity = 0;
@@ -81,26 +91,34 @@ int PollerDel(int fd) {
 }
 
 int PollerRun(int timeout_ms, poller_cb callback) {
+    if (poller.fds == NULL) {
+        return -1;  // poller未创建即使用
+    }
+    if (callback == NULL) {
+        return -1;  // 回调函数为空
+    }
     int ready = poll(poller.fds, poller.nfds, timeout_ms);
     if (ready < 0) {
-        perror("PollerWait: poll error");
-        return -1;
+        perror("PollerRun: poll error");
+        return -2;
     }
-    for (uint8_t i = 0; ready != 0 || i < poller.nfds; i++) {
-        if (poller.fds[i].revents == 0) {
+    if (ready == 0) {
+        return 0;
+    }
+    for (nfds_t i = 0; i < poller.nfds; i++) {
+        short revents = poller.fds[i].revents;
+        if (revents == 0) {
             continue;
         }
-        if (poller.fds[i].revents & (POLLIN | POLLOUT)) {
-            callback(poller.fds[i].fd, poller.fds[i].revents,
-                     poller.user_data[i]);
-            ready--;
-            continue;
+        if (revents & (POLLIN | POLLOUT)) {
+            callback(poller.fds[i].fd, revents, poller.user_data[i]);
         }
-        if (poller.fds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
-            fprintf(stderr, "PollerRun : fd %d revents error, please close",
-                    poller.fds[i].fd);
-            PollerDel(poller.fds[i].fd);
-            return poller.fds[i].fd;
+        if (revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            int bad_fd = poller.fds[i].fd;
+            fprintf(stderr, "PollerRun: fd %d revents error, please close\n",
+                    bad_fd);
+            PollerDel(bad_fd);
+            return bad_fd;
         }
     }
     return 0;

@@ -8,12 +8,9 @@
 #define MAX_POLL 100
 
 int main() {
-    printf("POLL test app run!\n");
-    struct pollfd fds[MAX_POLL];
-    nfds_t nfds = 0;
-    AddPollfd(fds, &nfds, MAX_POLL, STDIN_FILENO, POLLIN);
-    fds[0].fd = STDIN_FILENO;
-    fds[0].events = POLLIN;
+    printf("mypoll demo run!\n");
+    PollerCreate(MAX_POLL);
+    PollerAdd(MAX_POLL, STDIN_FILENO, POLLIN);
 
     return 0;
 }

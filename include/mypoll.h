@@ -52,13 +52,14 @@ int PollerDel(int fd);
  * PollerRun : 处理监听池中的连接
  *  timeout_ms : 等待事件的时间,-1为无限等待,单位是ms
  *  callback : 用户自定义的处理函数
+ *  err_fd : 出错fd的输出参数,可为NULL,仅当返回1时被写入
  * Return :
  *  0  -> 正常退出
- *  -1 -> 监听池未创建
+ *  -1 -> 监听池未创建或callback为空
  *  -2 -> poll函数内部错误
- *  >0 -> 返回的正整数为出现问题的fd文件描述符,已自动移出监听池,需手动关闭fd
+ *  1  -> 存在出错fd,已自动移出监听池并通过*err_fd返回,需手动关闭
  */
-int PollerRun(int timeout_ms, poller_cb callback);
+int PollerRun(int timeout_ms, poller_cb callback, int *err_fd);
 
 #ifdef __cplusplus
 }

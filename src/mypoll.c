@@ -14,13 +14,19 @@ struct Poller {
     void **user_data;
     nfds_t capacity;
     nfds_t nfds;
+    struct pollfd *ready;
+    void **ready_user_data;
 };
 
 typedef struct Poller poller_t;
 
 // 初始化poller
-static poller_t poller = {
-    .fds = NULL, .user_data = NULL, .capacity = 0, .nfds = 0};
+static poller_t poller = {.fds = NULL,
+                          .user_data = NULL,
+                          .capacity = 0,
+                          .nfds = 0,
+                          .ready = NULL,
+                          .ready_user_data = NULL};
 
 int PollerCreate(nfds_t max_fds) {
     if (max_fds == 0) {
@@ -37,10 +43,29 @@ int PollerCreate(nfds_t max_fds) {
         free(fds);
         return -1;
     }
+    struct pollfd *ready = calloc(max_fds, sizeof(struct pollfd));
+    if (ready == NULL) {
+        perror("PollerCreate: ready calloc fail");
+        free(fds);
+        free(user_data);
+        return -1;
+    }
+    void **ready_user_data = calloc(max_fds, sizeof(void *));
+    if (ready_user_data == NULL) {
+        perror("PollerCreate: ready_user_data calloc fail");
+        free(fds);
+        free(user_data);
+        free(ready);
+        return -1;
+    }
     free(poller.fds);
     free(poller.user_data);
+    free(poller.ready);
+    free(poller.ready_user_data);
     poller.fds = fds;
     poller.user_data = user_data;
+    poller.ready = ready;
+    poller.ready_user_data = ready_user_data;
     poller.capacity = max_fds;
     poller.nfds = 0;
     return 0;
@@ -49,8 +74,12 @@ int PollerCreate(nfds_t max_fds) {
 void PollerDestory() {
     free(poller.fds);
     free(poller.user_data);
+    free(poller.ready);
+    free(poller.ready_user_data);
     poller.fds = NULL;
     poller.user_data = NULL;
+    poller.ready = NULL;
+    poller.ready_user_data = NULL;
     poller.capacity = 0;
     poller.nfds = 0;
 }
@@ -75,22 +104,22 @@ int PollerDel(int fd) {
     }
     for (nfds_t i = 0; i < poller.nfds; i++) {
         if (poller.fds[i].fd != fd) {
-            if ((i + 1) == poller.nfds) {
-                return -2;  // 未找到指定删除内容
-            }
             continue;
         }
-        poller.nfds--;
-        poller.fds[i] = poller.fds[poller.nfds];
-        poller.user_data[i] = poller.user_data[poller.nfds];
-        poller.fds[poller.nfds].fd = -1;
-        poller.fds[poller.nfds].revents = 0;
-        break;
+        nfds_t tail = poller.nfds - 1;
+        poller.fds[i] = poller.fds[tail];
+        poller.user_data[i] = poller.user_data[tail];
+        poller.fds[tail].fd = -1;
+        poller.fds[tail].events = 0;
+        poller.fds[tail].revents = 0;
+        poller.user_data[tail] = NULL;
+        poller.nfds = tail;
+        return 0;
     }
-    return 0;
+    return -2;  // 未找到指定删除内容
 }
 
-int PollerRun(int timeout_ms, poller_cb callback) {
+int PollerRun(int timeout_ms, poller_cb callback, int *err_fd) {
     if (poller.fds == NULL) {
         return -1;  // poller未创建即使用
     }
@@ -105,20 +134,30 @@ int PollerRun(int timeout_ms, poller_cb callback) {
     if (ready == 0) {
         return 0;
     }
+    // 先快照本轮就绪项,回调内Add/Del不会破坏本轮遍历
+    nfds_t nready = 0;
     for (nfds_t i = 0; i < poller.nfds; i++) {
-        short revents = poller.fds[i].revents;
-        if (revents == 0) {
+        if (poller.fds[i].revents == 0) {
             continue;
         }
+        poller.ready[nready] = poller.fds[i];
+        poller.ready_user_data[nready] = poller.user_data[i];
+        nready++;
+    }
+    for (nfds_t i = 0; i < nready; i++) {
+        int fd = poller.ready[i].fd;
+        short revents = poller.ready[i].revents;
         if (revents & (POLLIN | POLLOUT)) {
-            callback(poller.fds[i].fd, revents, poller.user_data[i]);
+            callback(fd, revents, poller.ready_user_data[i]);
         }
         if (revents & (POLLERR | POLLHUP | POLLNVAL)) {
-            int bad_fd = poller.fds[i].fd;
             fprintf(stderr, "PollerRun: fd %d revents error, please close\n",
-                    bad_fd);
-            PollerDel(bad_fd);
-            return bad_fd;
+                    fd);
+            PollerDel(fd);
+            if (err_fd != NULL) {
+                *err_fd = fd;
+            }
+            return 1;
         }
     }
     return 0;

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(cpp_template
+project(mypoll
     VERSION 1.0.0
-    DESCRIPTION "C语言poll练习"
-    LANGUAGES C CXX
+    DESCRIPTION "基于 poll(2) 的事件监听池"
+    LANGUAGES C
 )
 
 # ============================================================
@@ -16,11 +16,9 @@ if(NOT CMAKE_BUILD_TYPE)
         "构建类型(Debug/Release/MinSizeRel/RelWithDebInfo)" FORCE)
 endif()
 
-# C / C++ 标准
+# C 标准
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 导出 compile_commands.json,供 clangd / clang-tidy 使用
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -48,7 +46,7 @@ target_include_directories(mypoll
 )
 
 # ============================================================
-# 可执行程序:C++ 实现,链接上面的 C 静态库
+# 可执行程序:示例程序,链接 mypoll 静态库
 # ============================================================
 add_executable(app
     src/main.c

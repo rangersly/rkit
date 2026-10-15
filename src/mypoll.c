@@ -16,6 +16,8 @@ struct Poller {
     nfds_t nfds;
     struct pollfd *ready;
     void **ready_user_data;
+    // 每次 Create/Destory 递增,供 PollerRun 检测回调内的销毁或重建
+    uint64_t generation;
 };
 
 typedef struct Poller poller_t;
@@ -26,7 +28,8 @@ static poller_t poller = {.fds = NULL,
                           .capacity = 0,
                           .nfds = 0,
                           .ready = NULL,
-                          .ready_user_data = NULL};
+                          .ready_user_data = NULL,
+                          .generation = 0};
 
 int PollerCreate(nfds_t max_fds) {
     if (max_fds == 0) {
@@ -68,6 +71,7 @@ int PollerCreate(nfds_t max_fds) {
     poller.ready_user_data = ready_user_data;
     poller.capacity = max_fds;
     poller.nfds = 0;
+    poller.generation++;
     return 0;
 }
 
@@ -82,6 +86,7 @@ void PollerDestory(void) {
     poller.ready_user_data = NULL;
     poller.capacity = 0;
     poller.nfds = 0;
+    poller.generation++;
 }
 
 int PollerAdd(int fd, short events, void *user_data) {
@@ -139,6 +144,8 @@ int PollerRun(int timeout_ms, poller_cb callback, int *err_fd) {
     if (ready == 0) {
         return 0;
     }
+    // 记录本轮代际,回调内Create/Destory会使其变化
+    uint64_t generation = poller.generation;
     // 先快照本轮就绪项,回调内Add/Del不会破坏本轮遍历
     nfds_t nready = 0;
     for (nfds_t i = 0; i < poller.nfds; i++) {
@@ -150,15 +157,22 @@ int PollerRun(int timeout_ms, poller_cb callback, int *err_fd) {
         nready++;
     }
     for (nfds_t i = 0; i < nready; i++) {
+        // 在回调前取出全部数据,避免回调销毁快照后再次访问
         int fd = poller.ready[i].fd;
         short revents = poller.ready[i].revents;
+        short events = poller.ready[i].events;
+        void *user_data = poller.ready_user_data[i];
         if (revents & (POLLIN | POLLOUT)) {
-            callback(fd, revents, poller.ready_user_data[i]);
+            callback(fd, revents, user_data);
+            if (poller.generation != generation) {
+                // 回调内销毁或重建了监听池,中止本轮剩余分发
+                return -3;
+            }
         }
         if (revents & (POLLERR | POLLHUP | POLLNVAL)) {
             fprintf(stderr, "PollerRun: fd %d revents error, please close\n",
                     fd);
-            PollerDel(fd, poller.ready[i].events);
+            PollerDel(fd, events);
             if (err_fd != NULL) {
                 *err_fd = fd;
             }

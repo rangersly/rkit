@@ -105,10 +105,13 @@ int PollerDel(int fd, short events);
  * @retval -2 poll(2) 调用出错，具体原因打印到 stderr。
  * @retval  1 发现出错的 fd（revents 含 POLLERR/POLLHUP/POLLNVAL）：该
  *            项已自动移出监听池，出错 fd 通过 *err_fd 返回，调用方需自行关闭。
+ * @retval -3 回调执行期间监听池被 PollerDestory 销毁或被 PollerCreate 重建：
+ *            本轮剩余就绪项不再分发，立即返回。
  *
- * @warning 出错项会被自动移出监听池；若同一 fd 注册了多项，仅移除出错的该项，
- *          其余项仍保留。
+ * @warning 出错项会被自动移出监听池；若同一 fd 注册了多项，仅移除出错的该项。
  * @note 当 revents 同时包含普通事件与错误标志时，先回调再返回错误。
+ * @note 回调内可安全调用 PollerAdd / PollerDel；若在回调内销毁（或重建）监听池，
+ *       剩余分发会中止并返回 -3，调用方应据此停止使用并视需要重新 PollerCreate。
  */
 int PollerRun(int timeout_ms, poller_cb callback, int *err_fd);
 

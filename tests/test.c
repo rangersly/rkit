@@ -49,6 +49,14 @@ static void ReentryCb(int fd, short revents, void *user_data) {
     }
 }
 
+static void DestroyCb(int fd, short revents, void *user_data) {
+    (void)fd;
+    (void)revents;
+    (void)user_data;
+    cb_count++;
+    PollerDestory();
+}
+
 int main(void) {
     printf("==================\n");
     printf("===Test running===\n");
@@ -152,6 +160,25 @@ int main(void) {
     PollerRun(0, ReentryCb, &err);
     printf("回调内Del其它fd后本轮不丢事件 : ");
     ShowTest(cb_count == 2);
+    PollerDestory();
+
+    printf("\n---Run 回调内Destory(重入销毁)---\n");
+    PollerCreate(16);
+    pipe(p);
+    pipe(q);
+    PollerAdd(p[0], POLLIN, NULL);
+    PollerAdd(q[0], POLLIN, NULL);
+    write(p[1], "x", 1);
+    write(q[1], "y", 1);
+    ResetCb();
+    err = 0;
+    printf("回调内Destory返回-3且不崩溃 : ");
+    ShowTest(PollerRun(0, DestroyCb, &err) == -3);
+    printf("Destory后剩余就绪项不再分发 : ");
+    ShowTest(cb_count == 1);
+    err = 0;
+    printf("Destory后再次Run失败 : ");
+    ShowTest(PollerRun(0, DestroyCb, &err) == -1);
     PollerDestory();
 
     printf("\n---Run 出错fd回传---\n");

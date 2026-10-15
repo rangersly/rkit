@@ -36,6 +36,7 @@
 | `PollerRun` | `-1` | 监听池未创建，或 `callback` 为 `NULL` |
 | `PollerRun` | `-2` | `poll(2)` 调用出错 |
 | `PollerRun` | `1` | 存在出错 fd，已移出监听池并经 `err_fd` 返回 |
+| `PollerRun` | `-3` | 回调期间监听池被 `PollerDestory` 销毁或被 `PollerCreate` 重建 |
 
 ## 数据结构
 
@@ -114,8 +115,9 @@ int PollerRun(int timeout_ms, poller_cb callback, int *err_fd);
 - `timeout_ms`：等待超时（毫秒），`-1` 表示无限等待。
 - `callback`：事件就绪回调，不可为 `NULL`。
 - `err_fd`：出错 fd 的输出参数，可为 `NULL`；仅在返回 `1` 时写入。
-- 返回：正常 `0`；未创建或 `callback` 为 `NULL` 返回 `-1`；`poll(2)` 出错返回 `-2`；存在出错 fd 返回 `1`。
+- 返回：正常 `0`；未创建或 `callback` 为 `NULL` 返回 `-1`；`poll(2)` 出错返回 `-2`；存在出错 fd 返回 `1`；回调内销毁或重建监听池返回 `-3`。
 - 本轮就绪事件在调用前已快照，回调执行期间可安全地调用 `PollerAdd` / `PollerDel`。
+- 若在回调内调用 `PollerDestory`（或 `PollerCreate` 重建），监听池状态相对本轮开始时已改变，剩余就绪项不再分发，`PollerRun` 立即返回 `-3`；调用方应停止使用并按需重新 `PollerCreate`。
 - 出错项（`revents` 含 `POLLERR/POLLHUP/POLLNVAL`）会被自动移出监听池并经 `err_fd` 返回，调用方需自行关闭该 fd；若同一 fd 注册了多项，仅移出事发的该项。
 - 当 `revents` 同时包含普通事件与错误标志时，先回调再返回错误。
 

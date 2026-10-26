@@ -36,6 +36,8 @@
 
 ## 构建与运行
 
+需要 CMake 3.21 及以上。
+
 ```bash
 # 配置(默认 Release)
 cmake -B build -S .
@@ -108,6 +110,89 @@ int main(void) {
     PollerDestory();
     return 0;
 }
+```
+
+## 作为库使用(FetchContent)
+
+消费方只需在 CMake 中声明本仓库的本地路径，即可链接 `mypoll::mypoll`。本仓库被引入时只构建核心静态库，不会构建示例程序 `app` 或测试 `tests`。
+
+### 消费方 CMakeLists.txt
+
+```cmake
+cmake_minimum_required(VERSION 3.21)
+project(myapp LANGUAGES C)
+
+include(FetchContent)
+FetchContent_Declare(mypoll
+    # 本地仓库绝对路径，换成你自己的路径
+    GIT_REPOSITORY /home/rangersly/poll
+    # 使用本地仓库的 main 分支；需要固定版本时改成 commit hash
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(mypoll)
+
+add_executable(myapp main.c)
+target_link_libraries(myapp PRIVATE mypoll::mypoll)
+```
+
+### 消费方 main.c
+
+```c
+#include <mypoll.h>
+
+int main(void) {
+    if (PollerCreate(16) != 0) {
+        return 1;
+    }
+    PollerDestory();
+    return 0;
+}
+```
+
+### 配置与构建
+
+```bash
+cmake -S . -B build
+cmake --build build
+./build/myapp
+```
+
+`GIT_REPOSITORY` 指向本地仓库时不会联网，但它执行的是 `git clone`，只能看到**已提交**的内容。如果本仓库还有未提交的改动，消费方拿到的仍是上一次提交的版本。需要先提交；或者临时用下面的参数直接指向工作区：
+
+```bash
+cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_MYPOLL=/home/rangersly/poll
+```
+
+确认消费方没有构建示例和测试：
+
+```bash
+cmake --build build --target help
+```
+
+目标列表中应只有 `myapp`、`mypoll` 等，不应出现 `app` 或 `tests`。
+
+### 固定版本
+
+本地开发可以用 `main`，需要可复现构建时改成提交哈希：
+
+```cmake
+GIT_TAG <commit-hash>
+```
+
+以后把仓库推到远端时，只需替换地址和 tag：
+
+```cmake
+GIT_REPOSITORY git@github.com:you/mypoll.git
+GIT_TAG v1.0.0
+```
+
+### 更新本地依赖
+
+修改本仓库并提交后，如果消费方没有自动更新，删除缓存再重新配置：
+
+```bash
+rm -rf build/_deps/mypoll-*
+cmake -S . -B build
 ```
 
 ## API 概览

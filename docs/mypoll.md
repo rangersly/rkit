@@ -1,6 +1,6 @@
-# mypoll API 参考
+# mypoll 模块 API 参考
 
-基于 `poll(2)` 的轻量级事件监听池封装（C17，无第三方依赖）。
+`rkit` 工具箱中的事件监听池模块：基于 `poll(2)` 的轻量级事件监听池封装（C17，无第三方依赖）。
 
 ## 概述
 
@@ -168,10 +168,10 @@ int main(void) {
 }
 ```
 
-编译（假设已构建静态库 `libmypoll.a`）：
+编译（假设已构建静态库 `librkit.a`）：
 
 ```bash
-cc -Iinclude example.c -Lbuild -lmypoll -o example
+cc -Iinclude example.c -Lbuild -lrkit -o example
 ```
 
 ## 注意事项

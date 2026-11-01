@@ -1,11 +1,23 @@
-# mypoll
+# rkit
 
-基于 `poll(2)` 的事件监听池库的项目语境,约定领域术语与工程结构。
+轻量级 C 工具箱的项目语境,约定领域术语与工程结构。首个工具模块是 `mypoll`(基于 `poll(2)` 的事件监听池)。
 
 ## Language
 
+**工具箱 (rkit)**:
+本仓库整体,承载一组可独立使用的通用 C 工具模块。项目名 `rkit`,CMake 项目名与核心库目标同名。
+_Avoid_: 框架、SDK
+
+**工具模块 (module)**:
+工具箱中的一个独立工具,包含公开头文件、实现、测试与文档。简单模块使用单个头文件,体量大时使用目录。
+_Avoid_: 组件、插件
+
+**模块头文件 (module header)**:
+`include/` 下每个工具模块的公开头文件。简单模块命名为 `r<tool>.h`(如 `rarray.h`);体量大、需要多个头文件的模块放入 `include/<tool>/` 目录。统一带 `#ifndef` 防护符(形如 `RKIT_<TOOL>_H_`)与 `extern "C"` 守卫。
+_Avoid_: 公共接口头、对外头文件
+
 **监听池 (poller)**:
-本库的核心对象,持有 `fds`、`user_data`、`capacity`、`nfds` 等全局静态状态,进程内唯一。由 `PollerCreate` 创建、`PollerDestory` 释放。
+`mypoll` 模块的核心对象,持有 `fds`、`user_data`、`capacity`、`nfds` 等全局静态状态,进程内唯一。由 `PollerCreate` 创建、`PollerDestory` 释放。
 _Avoid_: 事件循环、reactor
 
 **监听项 (poll item)**:
@@ -25,17 +37,17 @@ _Avoid_: 处理器、handler
 _Avoid_: 异常连接
 
 **公开头文件 (public header)**:
-`include/mypoll.h`,对外暴露的接口。带 `#ifndef` 防护符与 `extern "C"` 守卫,`include/` 为搜索根。
+`include/mypoll.h`,`mypoll` 模块对外暴露的接口。带 `#ifndef` 防护符与 `extern "C"` 守卫,`include/` 为搜索根。
 _Avoid_: 对外头文件、公共接口头
 
 **库目标 (library target)**:
-由 `add_library` 定义的静态库 `mypoll`,`include/` 通过 `PUBLIC` 传播,`src/` 通过 `PRIVATE` 仅自用。
+由 `add_library` 定义的静态库 `rkit`(别名 `rkit::rkit`)。`include/` 通过 `PUBLIC` 传播,`src/` 通过 `PRIVATE` 仅自用。
 _Avoid_: 模块
 
 **可执行目标 (executable target)**:
-由 `add_executable` 定义的示例程序 `app`,链接 `mypoll`。
+由 `add_executable` 定义的示例程序 `app`,链接 `rkit`。
 _Avoid_: 程序、入口
 
 **测试目标 (test target)**:
-由 `add_executable` + `add_test` 定义、通过 CTest 运行的测试程序 `tests`。
+由 `add_executable` + `add_test` 定义、通过 CTest 运行的测试程序。每个工具模块一个,命名为 `test_<tool>`(如 `test_poll`),源文件为 `tests/test_<tool>.c`。
 _Avoid_: 用例

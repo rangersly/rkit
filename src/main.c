@@ -43,7 +43,7 @@ int main(void) {
         return 1;
     }
 
-    printf("mypoll demo: 输入内容回车回显; 每 %d ms 打印一次心跳; EOF/Ctrl-C 退出\n\n",
+    printf("rkit mypoll demo: 输入内容回车回显; 每 %d ms 打印一次心跳; EOF/Ctrl-C 退出\n\n",
            TICK_MS);
 
     while (running) {

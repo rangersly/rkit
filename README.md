@@ -1,8 +1,16 @@
-# mypoll
+# rkit
 
-基于 `poll(2)` 的轻量级事件监听池库。单文件实现,C17,无第三方依赖,提供回调式的事件分发,并附带示例程序与 CTest 测试。
+轻量级 C 工具箱。以模块化方式提供一组可独立使用的通用工具,首个模块是基于 `poll(2)` 的事件监听池 `mypoll`。C17,无第三方依赖,并附带示例程序与 CTest 测试。
 
-## 特性
+## 模块
+
+| 模块 | 公开头文件 | 文档 | 说明 |
+|---|---|---|---|
+| mypoll | [`include/mypoll.h`](include/mypoll.h) | [`docs/mypoll.md`](docs/mypoll.md) | 基于 `poll(2)` 的事件监听池 |
+
+新增工具按 [新增工具约定](#新增工具约定) 接入,并在此表登记。
+
+## mypoll 特性
 
 - 基于 `poll(2)` 的事件监听池,注册 `(fd, events)` 组合后由回调统一分发
 - 同一个 fd 可用不同 `events` 注册多个监听项
@@ -22,14 +30,14 @@
 ├── LICENSE                    # MIT
 ├── README.md
 ├── docs/
-│   └── api.md                 # API 参考文档
+│   └── mypoll.md              # mypoll 模块 API 参考
 ├── include/
-│   └── mypoll.h               # 公开头文件(extern "C" 守卫)
+│   └── mypoll.h               # mypoll 公开头文件(extern "C" 守卫)
 ├── src/
-│   ├── mypoll.c               # 库实现
+│   ├── mypoll.c               # mypoll 实现
 │   └── main.c                 # 示例程序
 └── tests/
-    └── test.c                 # CTest 测试
+    └── test_poll.c            # mypoll 的 CTest 测试
 ```
 
 约定:`include/` 只放公开头文件,`src/` 放实现与示例,`tests/` 放测试;公开头文件统一用 `#ifndef` 防护符 + `extern "C"` 守卫以便 C++ 调用。
@@ -114,7 +122,7 @@ int main(void) {
 
 ## 作为库使用(FetchContent)
 
-消费方只需在 CMake 中声明本仓库的本地路径，即可链接 `mypoll::mypoll`。本仓库被引入时只构建核心静态库，不会构建示例程序 `app` 或测试 `tests`。
+消费方只需在 CMake 中声明本仓库的本地路径,即可链接 `rkit::rkit`。本仓库被引入时只构建核心静态库,不会构建示例程序 `app` 或测试。
 
 ### 消费方 CMakeLists.txt
 
@@ -123,16 +131,16 @@ cmake_minimum_required(VERSION 3.21)
 project(myapp LANGUAGES C)
 
 include(FetchContent)
-FetchContent_Declare(mypoll
+FetchContent_Declare(rkit
     # 本地仓库绝对路径，换成你自己的路径
     GIT_REPOSITORY /home/rangersly/poll
     # 使用本地仓库的 main 分支；需要固定版本时改成 commit hash
     GIT_TAG main
 )
-FetchContent_MakeAvailable(mypoll)
+FetchContent_MakeAvailable(rkit)
 
 add_executable(myapp main.c)
-target_link_libraries(myapp PRIVATE mypoll::mypoll)
+target_link_libraries(myapp PRIVATE rkit::rkit)
 ```
 
 ### 消费方 main.c
@@ -160,7 +168,7 @@ cmake --build build
 `GIT_REPOSITORY` 指向本地仓库时不会联网，但它执行的是 `git clone`，只能看到**已提交**的内容。如果本仓库还有未提交的改动，消费方拿到的仍是上一次提交的版本。需要先提交；或者临时用下面的参数直接指向工作区：
 
 ```bash
-cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_MYPOLL=/home/rangersly/poll
+cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_RKIT=/home/rangersly/poll
 ```
 
 确认消费方没有构建示例和测试：
@@ -169,7 +177,7 @@ cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_MYPOLL=/home/rangersly/poll
 cmake --build build --target help
 ```
 
-目标列表中应只有 `myapp`、`mypoll` 等，不应出现 `app` 或 `tests`。
+目标列表中应只有 `myapp`、`rkit` 等，不应出现 `app` 或 `test_poll`。
 
 ### 固定版本
 
@@ -182,8 +190,8 @@ GIT_TAG <commit-hash>
 以后把仓库推到远端时，只需替换地址和 tag：
 
 ```cmake
-GIT_REPOSITORY git@github.com:you/mypoll.git
-GIT_TAG v1.0.0
+GIT_REPOSITORY git@github.com:you/rkit.git
+GIT_TAG v2.0.0
 ```
 
 ### 更新本地依赖
@@ -191,13 +199,13 @@ GIT_TAG v1.0.0
 修改本仓库并提交后，如果消费方没有自动更新，删除缓存再重新配置：
 
 ```bash
-rm -rf build/_deps/mypoll-*
+rm -rf build/_deps/rkit-*
 cmake -S . -B build
 ```
 
-## API 概览
+## mypoll API 概览
 
-完整说明见 [`docs/api.md`](docs/api.md) 与头文件 [`include/mypoll.h`](include/mypoll.h)。
+完整说明见 [`docs/mypoll.md`](docs/mypoll.md) 与头文件 [`include/mypoll.h`](include/mypoll.h)。
 
 | 接口 | 说明 |
 |---|---|
@@ -216,6 +224,21 @@ cmake -S . -B build
 | `PollerDel` | `-1` / `-2` | 未创建 / 未找到匹配项 |
 | `PollerRun` | `-1` / `-2` / `1` | 未创建或回调为空 / `poll` 出错 / 存在出错 fd |
 
+## 新增工具约定
+
+新增一个工具时,按以下模板接入:
+
+| 项目 | 约定 |
+|---|---|
+| 公开头文件 | 简单工具:`include/r<tool>.h`(如 `rarray.h`);体量大时:`include/<tool>/` 多文件 |
+| 头文件守卫 | `RKIT_<TOOL>_H_` |
+| extern "C" | 公开头文件统一加守卫 |
+| 符号前缀 | 语义前缀,如 `Array_` / `Queue_` / `Map_` / `Log_` / `Pool_` |
+| 实现 | `src/<tool>.c` |
+| 测试 | `tests/test_<tool>.c` + CTest 目标 `test_<tool>` |
+| 文档 | `docs/<tool>.md`,并在上方[模块](#模块)表登记 |
+| 构建 | 显式加入 `rkit` 目标源列表 |
+
 ## 代码规范
 
 格式化(需安装 clang-format):
@@ -227,7 +250,7 @@ clang-format -i include/*.h src/*.c tests/*.c
 静态检查(需安装 clang-tidy;本项目不把 clang-tidy 集成进构建,按需手动运行):
 
 ```bash
-clang-tidy -p build src/mypoll.c src/main.c tests/test.c
+clang-tidy -p build src/mypoll.c src/main.c tests/test_poll.c
 ```
 
 ### 命名约定速查(Google 风格)
@@ -237,8 +260,8 @@ clang-tidy -p build src/mypoll.c src/main.c tests/test.c
 | 类型 / 结构体 / typedef | `CamelCase` | `Poller` |
 | 函数 | `CamelCase` | `PollerCreate` |
 | 变量 / 参数 / 成员 | `snake_case` | `user_data`, `nfds` |
-| 宏 | `UPPER_CASE` | `POLL_MYPOLL_H_` |
-| 文件 | `lower_snake_case` | `mypoll.h` |
+| 宏 | `UPPER_CASE` | `POLL_MYPOLL_H_`, `RKIT_ARRAY_H_` |
+| 文件 | `lower_snake_case` | `mypoll.h`, `rarray.h` |
 
 具体规则以 [`.clang-tidy`](.clang-tidy) 与 [`.clang-format`](.clang-format) 为准。
 

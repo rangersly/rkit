@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(mypoll
-    VERSION 1.0.0
-    DESCRIPTION "基于 poll(2) 的事件监听池"
+project(rkit
+    VERSION 2.0.0
+    DESCRIPTION "轻量级 C 工具箱,包含 poll(2) 事件监听池等模块"
     LANGUAGES C
 )
 
@@ -12,35 +12,35 @@ project(mypoll
 #    FetchContent / add_subdirectory 引入,都只构建这一部分。
 # ============================================================
 
-add_library(mypoll STATIC
+add_library(rkit STATIC
     src/mypoll.c
 )
 
-# 对外统一使用 mypoll::mypoll 这个名字链接,
-# 避免消费方直接依赖裸目标名 mypoll。
-add_library(mypoll::mypoll ALIAS mypoll)
+# 对外统一使用 rkit::rkit 这个名字链接,
+# 避免消费方直接依赖裸目标名 rkit。
+add_library(rkit::rkit ALIAS rkit)
 
 # include/ 是公开接口,BUILD_INTERFACE 表示只在构建树内生效;
 # src/ 只给库自身使用,不对外暴露。
-target_include_directories(mypoll
+target_include_directories(rkit
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-# 这些属性只作用于 mypoll 目标本身,不会传播给消费方。
+# 这些属性只作用于 rkit 目标本身,不会传播给消费方。
 # C_STANDARD:用 C17 编译库源码
 # C_STANDARD_REQUIRED:编译器不支持 C17 时直接报错
 # POSITION_INDEPENDENT_CODE:静态库带 -fPIC,方便被链进消费方的共享库
-set_target_properties(mypoll PROPERTIES
+set_target_properties(rkit PROPERTIES
     C_STANDARD 17
     C_STANDARD_REQUIRED ON
     POSITION_INDEPENDENT_CODE ON
 )
 
 # 只给库自身开警告,不污染消费方。
-target_compile_options(mypoll PRIVATE
+target_compile_options(rkit PRIVATE
     -Wall -Wextra
 )
 
@@ -49,7 +49,7 @@ target_compile_options(mypoll PRIVATE
 #    被其他项目引入时 PROJECT_IS_TOP_LEVEL 为 false,
 #    下面整块都不会执行:
 #    - 不构建示例程序 app
-#    - 不构建测试 tests
+#    - 不构建测试 test_poll
 #    - 不引入 CTest
 #    - 不修改消费方的构建类型和输出目录
 # ============================================================
@@ -82,7 +82,7 @@ if(PROJECT_IS_TOP_LEVEL)
     target_compile_options(app PRIVATE -Wall -Wextra)
     target_link_libraries(app
         PRIVATE
-            mypoll
+            rkit
     )
 
     # --------------------------------------------------------
@@ -92,14 +92,15 @@ if(PROJECT_IS_TOP_LEVEL)
     # --------------------------------------------------------
     include(CTest)
     if(BUILD_TESTING)
-        add_executable(tests
-            tests/test.c
+        # 每个工具一个测试可执行目标,避免单测程序随模块增多而膨胀。
+        add_executable(test_poll
+            tests/test_poll.c
         )
-        target_compile_options(tests PRIVATE -Wall -Wextra)
-        target_link_libraries(tests
+        target_compile_options(test_poll PRIVATE -Wall -Wextra)
+        target_link_libraries(test_poll
             PRIVATE
-                mypoll
+                rkit
         )
-        add_test(NAME tests COMMAND tests)
+        add_test(NAME test_poll COMMAND test_poll)
     endif()
 endif()

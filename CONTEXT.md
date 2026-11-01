@@ -13,8 +13,16 @@ _Avoid_: 框架、SDK
 _Avoid_: 组件、插件
 
 **模块头文件 (module header)**:
-`include/` 下每个工具模块的公开头文件。简单模块命名为 `r<tool>.h`(如 `rarray.h`);体量大、需要多个头文件的模块放入 `include/<tool>/` 目录。统一带 `#ifndef` 防护符(形如 `RKIT_<TOOL>_H_`)与 `extern "C"` 守卫。
+`include/` 下每个工具模块的公开头文件。简单模块命名为 `r<tool>.h`(如 `rio.h`);体量大、需要多个头文件的模块放入 `include/<tool>/` 目录。统一带 `#ifndef` 防护符(形如 `RKIT_<TOOL>_H_`)与 `extern "C"` 守卫。
 _Avoid_: 公共接口头、对外头文件
+
+**io 模块 (io)**:
+`rio.h` 提供的非阻塞 `read(2)` / `write(2)` 薄封装,由 `IoRead` / `IoWrite` 实现。只做单次系统调用并对 `EINTR` 重试,不改变 fd 阻塞模式,也不做读写缓冲。
+_Avoid_: 异步 I/O、I/O 框架
+
+**部分读写 (partial I/O)**:
+单次 read/write 成功但字节数小于请求长度的情形。io 模块不隐藏该行为,由调用方重试或累积。
+_Avoid_: 短读、残包
 
 **监听池 (poller)**:
 `mypoll` 模块的核心对象,持有 `fds`、`user_data`、`capacity`、`nfds` 等全局静态状态,进程内唯一。由 `PollerCreate` 创建、`PollerDestory` 释放。

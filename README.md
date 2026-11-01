@@ -7,6 +7,7 @@
 | 模块 | 公开头文件 | 文档 | 说明 |
 |---|---|---|---|
 | mypoll | [`include/mypoll.h`](include/mypoll.h) | [`docs/mypoll.md`](docs/mypoll.md) | 基于 `poll(2)` 的事件监听池 |
+| io | [`include/rio.h`](include/rio.h) | [`docs/io.md`](docs/io.md) | 非阻塞 `read(2)` / `write(2)` 薄封装 |
 
 新增工具按 [新增工具约定](#新增工具约定) 接入,并在此表登记。
 
@@ -30,13 +31,17 @@
 ├── LICENSE                    # MIT
 ├── README.md
 ├── docs/
+│   ├── io.md                  # io 模块 API 参考
 │   └── mypoll.md              # mypoll 模块 API 参考
 ├── include/
-│   └── mypoll.h               # mypoll 公开头文件(extern "C" 守卫)
+│   ├── mypoll.h               # mypoll 公开头文件(extern "C" 守卫)
+│   └── rio.h                  # io 公开头文件(extern "C" 守卫)
 ├── src/
+│   ├── io.c                   # io 实现
 │   ├── mypoll.c               # mypoll 实现
 │   └── main.c                 # 示例程序
 └── tests/
+    ├── test_io.c              # io 的 CTest 测试
     └── test_poll.c            # mypoll 的 CTest 测试
 ```
 
@@ -177,7 +182,7 @@ cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_RKIT=/home/rangersly/poll
 cmake --build build --target help
 ```
 
-目标列表中应只有 `myapp`、`rkit` 等，不应出现 `app` 或 `test_poll`。
+目标列表中应只有 `myapp`、`rkit` 等，不应出现 `app`、`test_poll` 或 `test_io`。
 
 ### 固定版本
 
@@ -191,7 +196,7 @@ GIT_TAG <commit-hash>
 
 ```cmake
 GIT_REPOSITORY git@github.com:you/rkit.git
-GIT_TAG v2.0.0
+GIT_TAG v2.1.0
 ```
 
 ### 更新本地依赖
@@ -224,6 +229,17 @@ cmake -S . -B build
 | `PollerDel` | `-1` / `-2` | 未创建 / 未找到匹配项 |
 | `PollerRun` | `-1` / `-2` / `1` | 未创建或回调为空 / `poll` 出错 / 存在出错 fd |
 
+## io API 概览
+
+完整说明见 [`docs/io.md`](docs/io.md) 与头文件 [`include/rio.h`](include/rio.h)。
+
+| 接口 | 说明 |
+|---|---|
+| `ssize_t IoRead(int fd, void *buf, size_t len)` | 单次 `read(2)`,EINTR 自动重试 |
+| `ssize_t IoWrite(int fd, const void *buf, size_t len)` | 单次 `write(2)`,EINTR 自动重试 |
+
+成功返回字节数,失败返回 `-1` 并保留 `errno`;`errno` 为 `EAGAIN` / `EWOULDBLOCK` 表示非阻塞 fd 暂时不可读/可写。封装不设置 `O_NONBLOCK`,也不保证读满或写完。
+
 ## 新增工具约定
 
 新增一个工具时,按以下模板接入:
@@ -250,7 +266,7 @@ clang-format -i include/*.h src/*.c tests/*.c
 静态检查(需安装 clang-tidy;本项目不把 clang-tidy 集成进构建,按需手动运行):
 
 ```bash
-clang-tidy -p build src/mypoll.c src/main.c tests/test_poll.c
+clang-tidy -p build src/mypoll.c src/io.c src/main.c tests/test_poll.c tests/test_io.c
 ```
 
 ### 命名约定速查(Google 风格)

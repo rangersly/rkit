@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(rkit
-    VERSION 2.0.0
+    VERSION 2.1.0
     DESCRIPTION "轻量级 C 工具箱,包含 poll(2) 事件监听池等模块"
     LANGUAGES C
 )
@@ -14,6 +14,7 @@ project(rkit
 
 add_library(rkit STATIC
     src/mypoll.c
+    src/io.c
 )
 
 # 对外统一使用 rkit::rkit 这个名字链接,
@@ -102,5 +103,15 @@ if(PROJECT_IS_TOP_LEVEL)
                 rkit
         )
         add_test(NAME test_poll COMMAND test_poll)
+
+        add_executable(test_io
+            tests/test_io.c
+        )
+        target_compile_options(test_io PRIVATE -Wall -Wextra)
+        target_link_libraries(test_io
+            PRIVATE
+                rkit
+        )
+        add_test(NAME test_io COMMAND test_io)
     endif()
 endif()

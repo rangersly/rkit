@@ -24,6 +24,10 @@ _Avoid_: 异步 I/O、I/O 框架
 单次 read/write 成功但字节数小于请求长度的情形。io 模块不隐藏该行为,由调用方重试或累积。
 _Avoid_: 短读、残包
 
+**serial 模块 (serial)**:
+`rserial.h` 提供的串口打开封装,由 `SerialOpen` 实现。以非阻塞方式打开设备,配置为原始模式下的 8N1、无流控,并丢弃残留输入;返回的 fd 交给调用方使用和关闭。
+_Avoid_: 串口驱动、串口框架
+
 **监听池 (poller)**:
 `mypoll` 模块的核心对象,持有 `fds`、`user_data`、`capacity`、`nfds` 等全局静态状态,进程内唯一。由 `PollerCreate` 创建、`PollerDestory` 释放。
 _Avoid_: 事件循环、reactor

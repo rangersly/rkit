@@ -1,5 +1,6 @@
 #include <poll.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "mypoll.h"
@@ -22,6 +23,20 @@ static void RecordCb(int fd, short revents, void *user_data) {
 }
 
 static void ResetCb(void) { cb_count = 0; }
+
+static void MakePipe(int fds[2]) {
+    if (pipe(fds) != 0) {
+        perror("pipe");
+        exit(1);
+    }
+}
+
+static void WriteByte(int fd, char ch) {
+    if (write(fd, &ch, 1) != 1) {
+        perror("write");
+        exit(1);
+    }
+}
 
 static int Seen(int fd, short events) {
     int n = cb_count < 16 ? cb_count : 16;
@@ -79,7 +94,7 @@ int main(void) {
     ShowTest(PollerCreate(16) == 0);
 
     printf("\n---Add 重复fd与capacity---\n");
-    pipe(p);
+    MakePipe(p);
     printf("Add(fd, POLLIN) : ");
     ShowTest(PollerAdd(p[0], POLLIN, (void *)0x1) == 0);
     printf("Add(同fd, POLLOUT) 允许 : ");
@@ -91,7 +106,7 @@ int main(void) {
     PollerDestory();
 
     PollerCreate(2);
-    pipe(p);
+    MakePipe(p);
     PollerAdd(p[0], POLLIN, NULL);
     PollerAdd(p[1], POLLIN, NULL);
     printf("超出capacity Add : ");
@@ -100,8 +115,8 @@ int main(void) {
 
     printf("\n---Del 按(fd, events)区分---\n");
     PollerCreate(16);
-    pipe(p);
-    pipe(q);
+    MakePipe(p);
+    MakePipe(q);
     PollerAdd(p[0], POLLIN, (void *)0x1);
     PollerAdd(p[0], POLLOUT, (void *)0x2);
     PollerAdd(q[0], POLLIN, (void *)0x3);
@@ -110,7 +125,7 @@ int main(void) {
     printf("重复 Del(p0, POLLOUT) : ");
     ShowTest(PollerDel(p[0], POLLOUT) == -2);
     ResetCb();
-    write(p[1], "x", 1);
+    WriteByte(p[1], 'x');
     PollerRun(0, RecordCb, &err);
     printf("删除POLLOUT后POLLIN项仍在 : ");
     ShowTest(Seen(p[0], POLLIN) && !Seen(p[0], POLLOUT));
@@ -124,12 +139,12 @@ int main(void) {
 
     printf("\n---Run 事件分发与超时---\n");
     PollerCreate(16);
-    pipe(p);
-    pipe(q);
+    MakePipe(p);
+    MakePipe(q);
     PollerAdd(p[0], POLLIN, NULL);
     PollerAdd(q[0], POLLIN, NULL);
-    write(p[1], "x", 1);
-    write(q[1], "y", 1);
+    WriteByte(p[1], 'x');
+    WriteByte(q[1], 'y');
     ResetCb();
     printf("Run 返回0 : ");
     ShowTest(PollerRun(0, RecordCb, &err) == 0);
@@ -139,7 +154,7 @@ int main(void) {
 
     PollerCreate(16);
     int r[2];
-    pipe(r);
+    MakePipe(r);
     PollerAdd(r[0], POLLIN, NULL);
     ResetCb();
     printf("无事件时超时返回0 : ");
@@ -148,14 +163,14 @@ int main(void) {
 
     printf("\n---Run 回调重入(快照分发)---\n");
     PollerCreate(16);
-    pipe(p);
-    pipe(q);
+    MakePipe(p);
+    MakePipe(q);
     reentry_first = p[0];
     reentry_second = q[0];
     PollerAdd(p[0], POLLIN, NULL);
     PollerAdd(q[0], POLLIN, NULL);
-    write(p[1], "x", 1);
-    write(q[1], "y", 1);
+    WriteByte(p[1], 'x');
+    WriteByte(q[1], 'y');
     ResetCb();
     PollerRun(0, ReentryCb, &err);
     printf("回调内Del其它fd后本轮不丢事件 : ");
@@ -164,12 +179,12 @@ int main(void) {
 
     printf("\n---Run 回调内Destory(重入销毁)---\n");
     PollerCreate(16);
-    pipe(p);
-    pipe(q);
+    MakePipe(p);
+    MakePipe(q);
     PollerAdd(p[0], POLLIN, NULL);
     PollerAdd(q[0], POLLIN, NULL);
-    write(p[1], "x", 1);
-    write(q[1], "y", 1);
+    WriteByte(p[1], 'x');
+    WriteByte(q[1], 'y');
     ResetCb();
     err = 0;
     printf("回调内Destory返回-3且不崩溃 : ");
@@ -184,7 +199,7 @@ int main(void) {
     printf("\n---Run 出错fd回传---\n");
     PollerCreate(16);
     int t[2];
-    pipe(t);
+    MakePipe(t);
     int bad = t[0];
     close(bad);
     close(t[1]);

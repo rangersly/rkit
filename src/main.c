@@ -1,4 +1,5 @@
 #include "mypoll.h"
+#include "rio.h"
 
 #include <poll.h>
 #include <stdio.h>
@@ -22,7 +23,9 @@ static void OnEvent(int fd, short revents, void *user_data) {
     if (n > 0) {
         printf("[%s] read: ", name);
         fflush(stdout);
-        write(STDOUT_FILENO, buf, (size_t)n);
+        if (IoWrite(STDOUT_FILENO, buf, (size_t)n) < 0) {
+            perror("write");
+        }
     } else if (n == 0) {
         printf("[%s] closed, unregister\n", name);
         PollerDel(fd, POLLIN);

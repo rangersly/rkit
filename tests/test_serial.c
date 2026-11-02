@@ -47,10 +47,22 @@ int main(void) {
     printf("---参数与错误路径---\n");
     errno = 0;
     printf("path 为 NULL 返回 EINVAL : ");
-    ShowTest(SerialOpen(NULL, B9600) == -1 && errno == EINVAL);
+    ShowTest(SerialOpen(NULL, 9600) == -1 && errno == EINVAL);
     errno = 0;
     printf("设备不存在返回 -1 : ");
-    ShowTest(SerialOpen("/nonexistent/rkit-no-such-device", B9600) == -1);
+    ShowTest(SerialOpen("/nonexistent/rkit-no-such-device", 9600) == -1);
+    errno = 0;
+    printf("非法波特率返回 EINVAL : ");
+    ShowTest(SerialOpen("/nonexistent/rkit-no-such-device", 12345) == -1 &&
+             errno == EINVAL);
+    errno = 0;
+    printf("波特率 0 返回 EINVAL : ");
+    ShowTest(SerialOpen("/nonexistent/rkit-no-such-device", 0) == -1 &&
+             errno == EINVAL);
+    errno = 0;
+    printf("负波特率返回 EINVAL : ");
+    ShowTest(SerialOpen("/nonexistent/rkit-no-such-device", -9600) == -1 &&
+             errno == EINVAL);
 
     printf("\n---伪终端上打开与配置---\n");
     char path[128];
@@ -59,7 +71,7 @@ int main(void) {
     ShowTest(master >= 0);
 
     if (master >= 0) {
-        int fd = SerialOpen(path, B9600);
+        int fd = SerialOpen(path, 9600);
         printf("SerialOpen 成功 : ");
         ShowTest(fd >= 0);
 
@@ -74,7 +86,7 @@ int main(void) {
             ShowTest((tty.c_cflag & (PARENB | CSTOPB | CRTSCTS)) == 0);
             printf("CLOCAL 与 CREAD 已设置 : ");
             ShowTest((tty.c_cflag & (CLOCAL | CREAD)) == (CLOCAL | CREAD));
-            printf("输入输出波特率为 B9600 : ");
+            printf("输入输出波特率映射为 B9600 : ");
             ShowTest(cfgetispeed(&tty) == B9600 && cfgetospeed(&tty) == B9600);
             printf("原始模式(无 ICANON/ECHO) : ");
             ShowTest((tty.c_lflag & (ICANON | ECHO)) == 0);

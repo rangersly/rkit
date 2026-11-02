@@ -6,8 +6,37 @@
 #include <termios.h>
 #include <unistd.h>
 
-int SerialOpen(const char *path, speed_t baud) {
+struct BaudSpeed {
+    int baud;
+    speed_t speed;
+};
+
+static const struct BaudSpeed kBaudTable[] = {
+    {9600, B9600},
+    {19200, B19200},
+    {38400, B38400},
+    {57600, B57600},
+    {115200, B115200},
+};
+
+static int BaudToSpeed(int baud, speed_t *speed) {
+    for (size_t i = 0; i < sizeof(kBaudTable) / sizeof(kBaudTable[0]); ++i) {
+        if (kBaudTable[i].baud == baud) {
+            *speed = kBaudTable[i].speed;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+int SerialOpen(const char *path, int baud) {
     if (path == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    speed_t speed;
+    if (BaudToSpeed(baud, &speed) < 0) {
         errno = EINVAL;
         return -1;
     }
@@ -30,10 +59,10 @@ int SerialOpen(const char *path, speed_t baud) {
     tty.c_cflag &= ~(CSIZE | PARENB | CSTOPB | CRTSCTS);
     tty.c_cflag |= (CS8 | CLOCAL | CREAD);
 
-    if (cfsetispeed(&tty, baud) < 0) {
+    if (cfsetispeed(&tty, speed) < 0) {
         goto fail;
     }
-    if (cfsetospeed(&tty, baud) < 0) {
+    if (cfsetospeed(&tty, speed) < 0) {
         goto fail;
     }
 

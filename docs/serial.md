@@ -19,14 +19,26 @@
 ### SerialOpen
 
 ```c
-int SerialOpen(const char *path, speed_t baud);
+int SerialOpen(const char *path, int baud);
 ```
 
 打开并配置串口,成功返回文件描述符。
 
 - `path`:串口设备路径,如 `"/dev/ttyUSB0"`、`"/dev/ttyS0"`;不可为 `NULL`。
-- `baud`:波特率常量,如 `B9600`、`B115200`,必须与对端设备一致。
+- `baud`:整数波特率,必须是下表中的值,且与对端设备一致。
 - 返回:成功返回 `>=0` 的 fd;失败返回 `-1`,并保留真实 `errno`。
+
+支持的整数波特率与 termios 常量对应关系:
+
+| 整数 `baud` | termios 常量 |
+|---|---|
+| `9600` | `B9600` |
+| `19200` | `B19200` |
+| `38400` | `B38400` |
+| `57600` | `B57600` |
+| `115200` | `B115200` |
+
+传入不支持的整数(如 `0`、负数或表中未列出的值)时,函数在打开设备前即以 `errno = EINVAL` 失败返回,不会产生 fd。
 
 内部行为:
 
@@ -36,7 +48,7 @@ int SerialOpen(const char *path, speed_t baud);
 | 读取配置 | `tcgetattr`,失败即中止 |
 | 原始模式 | `cfmakeraw`,关闭回显、行缓冲、信号字符与换行转换 |
 | 8N1 | 清除 `CSIZE / PARENB / CSTOPB / CRTSCTS`,设置 `CS8 / CLOCAL / CREAD` |
-| 波特率 | `cfsetispeed` / `cfsetospeed`,二者都必须成功 |
+| 波特率 | 整数映射为 `B*` 常量后,`cfsetispeed` / `cfsetospeed` 都必须成功 |
 | 生效 | `tcsetattr(TCSANOW)` |
 | 清理 | `tcflush(TCIFLUSH)` 丢弃打开前残留输入 |
 
@@ -65,7 +77,7 @@ static void OnReadable(int fd, short revents, void *user_data) {
 }
 
 int main(void) {
-    int fd = SerialOpen("/dev/ttyUSB0", B9600);
+    int fd = SerialOpen("/dev/ttyUSB0", 115200);
     if (fd < 0) {
         fprintf(stderr, "open serial failed: %s\n", strerror(errno));
         return 1;
@@ -98,5 +110,6 @@ cc -Iinclude example.c -Lbuild -lrkit -o example
 
 - **非阻塞**:返回的 fd 已带 `O_NONBLOCK`,读写可能返回 `EAGAIN` / `EWOULDBLOCK`;通常配合监听池等待可读/可写。
 - **fd 所有权**:`SerialOpen` 不负责关闭返回的 fd,调用方需自行 `close`。
-- **波特率匹配**:`baud` 必须与对端一致,否则会乱码或收不到数据。
+- **波特率匹配**:`baud` 必须与对端一致,否则会乱码或收不到数据;仅支持 9600/19200/38400/57600/115200,其他值返回 `EINVAL`。
+- **非 `speed_t` 接口**:不再接受 `B9600` 等常量。`B9600` 的数值并不等于 `9600`,传入会因不在支持表内而报 `EINVAL`。
 - **平台相关**:依赖 POSIX termios,目前面向 Linux/类 Unix 系统。

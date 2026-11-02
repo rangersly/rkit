@@ -269,9 +269,9 @@ cmake --build build --target help
 
 | 接口 | 说明 |
 |---|---|
-| `int SerialOpen(const char *path, speed_t baud)` | 非阻塞打开串口并配置为原始模式 8N1、无流控 |
+| `int SerialOpen(const char *path, int baud)` | 非阻塞打开串口并配置为原始模式 8N1、无流控 |
 
-成功返回 fd,失败返回 `-1` 并保留 `errno`。打开标志为 `O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC`;返回的 fd 可直接配合 `IoRead` / `IoWrite` 与监听池使用。
+成功返回 fd,失败返回 `-1` 并保留 `errno`。`baud` 为整数,仅支持 9600/19200/38400/57600/115200,其他值返回 `EINVAL`。打开标志为 `O_RDWR | O_NOCTTY | O_NONBLOCK | O_CLOEXEC`;返回的 fd 可直接配合 `IoRead` / `IoWrite` 与监听池使用。
 
 ## 新增工具约定
 

@@ -50,7 +50,6 @@ target_compile_options(rkit PRIVATE
 # 2. 仅顶层项目才构建的内容
 #    被其他项目引入时 PROJECT_IS_TOP_LEVEL 为 false,
 #    下面整块都不会执行:
-#    - 不构建示例程序 app
 #    - 不构建测试 test_poll
 #    - 不引入 CTest
 #    - 不修改消费方的构建类型和输出目录
@@ -76,19 +75,7 @@ if(PROJECT_IS_TOP_LEVEL)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
     # --------------------------------------------------------
-    # 2.1 示例程序
-    # --------------------------------------------------------
-    add_executable(app
-        src/main.c
-    )
-    target_compile_options(app PRIVATE -Wall -Wextra)
-    target_link_libraries(app
-        PRIVATE
-            rkit
-    )
-
-    # --------------------------------------------------------
-    # 2.2 测试
+    # 2.1 测试
     #     BUILD_TESTING 由 include(CTest) 提供,默认 ON;
     #     可用 -DBUILD_TESTING=OFF 关闭。
     # --------------------------------------------------------

@@ -1,6 +1,6 @@
 # rkit
 
-轻量级 C 工具箱。以模块化方式提供一组可独立使用的通用工具,首个模块是基于 `poll(2)` 的事件监听池 `mypoll`。C17,无第三方依赖,并附带示例程序与 CTest 测试。
+轻量级 C 工具箱。以模块化方式提供一组可独立使用的通用工具,首个模块是基于 `poll(2)` 的事件监听池 `mypoll`。C17,无第三方依赖,并附带 CTest 测试。
 
 ## 模块
 
@@ -18,7 +18,7 @@
 - 同一个 fd 可用不同 `events` 注册多个监听项
 - 就绪事件**快照分发**,回调内可安全地增删监听项
 - 出错 fd(`POLLERR`/`POLLHUP`/`POLLNVAL`)自动移出监听池并回传,交由调用方关闭
-- C 静态库 + 示例程序 + CTest 测试,内置 clang-format / clang-tidy / clangd 配置
+- C 静态库 + CTest 测试,内置 clang-format / clang-tidy / clangd 配置
 
 ## 目录结构
 
@@ -42,15 +42,14 @@
 ├── src/
 │   ├── io.c                   # io 实现
 │   ├── mypoll.c               # mypoll 实现
-│   ├── serial.c               # serial 实现
-│   └── main.c                 # 示例程序
+│   └── serial.c               # serial 实现
 └── tests/
     ├── test_io.c              # io 的 CTest 测试
     ├── test_poll.c            # mypoll 的 CTest 测试
     └── test_serial.c          # serial 的 CTest 测试
 ```
 
-约定:`include/` 只放公开头文件,`src/` 放实现与示例,`tests/` 放测试;公开头文件统一用 `#ifndef` 防护符 + `extern "C"` 守卫以便 C++ 调用。
+约定:`include/` 只放公开头文件,`src/` 放实现,`tests/` 放测试;公开头文件统一用 `#ifndef` 防护符 + `extern "C"` 守卫以便 C++ 调用。
 
 ## 构建与运行
 
@@ -62,9 +61,6 @@ cmake -B build -S .
 
 # 构建
 cmake --build build
-
-# 运行示例程序
-./build/app
 
 # 运行测试
 ctest --test-dir build
@@ -80,7 +76,7 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Debug
 cmake -B build -S . -DBUILD_TESTING=OFF
 
 # 只构建某个目标
-cmake --build build --target app
+cmake --build build --target test_poll
 ```
 
 ## 快速上手
@@ -132,7 +128,7 @@ int main(void) {
 
 ## 作为库使用(FetchContent)
 
-消费方只需在 CMake 中声明本仓库的本地路径,即可链接 `rkit::rkit`。本仓库被引入时只构建核心静态库,不会构建示例程序 `app` 或测试。
+消费方只需在 CMake 中声明本仓库的本地路径,即可链接 `rkit::rkit`。本仓库被引入时只构建核心静态库,不会构建测试。
 
 ### 消费方 CMakeLists.txt
 
@@ -187,7 +183,7 @@ cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_RKIT=/home/rangersly/poll
 cmake --build build --target help
 ```
 
-目标列表中应只有 `myapp`、`rkit` 等，不应出现 `app`、`test_poll`、`test_io` 或 `test_serial`。
+目标列表中应只有 `myapp`、`rkit` 等，不应出现 `test_poll`、`test_io` 或 `test_serial`。
 
 ### 固定版本
 
@@ -281,7 +277,7 @@ clang-format -i include/*.h src/*.c tests/*.c
 静态检查(需安装 clang-tidy;本项目不把 clang-tidy 集成进构建,按需手动运行):
 
 ```bash
-clang-tidy -p build src/mypoll.c src/io.c src/serial.c src/main.c tests/test_poll.c tests/test_io.c tests/test_serial.c
+clang-tidy -p build src/mypoll.c src/io.c src/serial.c tests/test_poll.c tests/test_io.c tests/test_serial.c
 ```
 
 ### 命名约定速查(Google 风格)

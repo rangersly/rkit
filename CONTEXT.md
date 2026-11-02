@@ -56,10 +56,6 @@ _Avoid_: 对外头文件、公共接口头
 由 `add_library` 定义的静态库 `rkit`(别名 `rkit::rkit`)。`include/` 通过 `PUBLIC` 传播,`src/` 通过 `PRIVATE` 仅自用。
 _Avoid_: 模块
 
-**可执行目标 (executable target)**:
-由 `add_executable` 定义的示例程序 `app`,链接 `rkit`。
-_Avoid_: 程序、入口
-
 **测试目标 (test target)**:
 由 `add_executable` + `add_test` 定义、通过 CTest 运行的测试程序。每个工具模块一个,命名为 `test_<tool>`(如 `test_poll`),源文件为 `tests/test_<tool>.c`。
 _Avoid_: 用例

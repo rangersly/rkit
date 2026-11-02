@@ -128,9 +128,11 @@ int main(void) {
 
 ## 作为库使用(FetchContent)
 
-消费方只需在 CMake 中声明本仓库的本地路径,即可链接 `rkit::rkit`。本仓库被引入时只构建核心静态库,不会构建测试。
+消费方只需在 CMake 中通过 FetchContent 引入本仓库，链接 `rkit::rkit`。本仓库被引入时只构建核心静态库,不会构建测试。
 
-### 消费方 CMakeLists.txt
+### 从 GitHub 获取(推荐)
+
+消费方 CMakeLists.txt:
 
 ```cmake
 cmake_minimum_required(VERSION 3.21)
@@ -138,10 +140,8 @@ project(myapp LANGUAGES C)
 
 include(FetchContent)
 FetchContent_Declare(rkit
-    # 本地仓库绝对路径，换成你自己的路径
-    GIT_REPOSITORY /home/rangersly/poll
-    # 使用本地仓库的 main 分支；需要固定版本时改成 commit hash
-    GIT_TAG main
+    GIT_REPOSITORY git@github.com:you/rkit.git
+    GIT_TAG v2.2.0
 )
 FetchContent_MakeAvailable(rkit)
 
@@ -149,7 +149,7 @@ add_executable(myapp main.c)
 target_link_libraries(myapp PRIVATE rkit::rkit)
 ```
 
-### 消费方 main.c
+消费方 main.c:
 
 ```c
 #include <mypoll.h>
@@ -163,7 +163,7 @@ int main(void) {
 }
 ```
 
-### 配置与构建
+配置与构建:
 
 ```bash
 cmake -S . -B build
@@ -171,13 +171,7 @@ cmake --build build
 ./build/myapp
 ```
 
-`GIT_REPOSITORY` 指向本地仓库时不会联网，但它执行的是 `git clone`，只能看到**已提交**的内容。如果本仓库还有未提交的改动，消费方拿到的仍是上一次提交的版本。需要先提交；或者临时用下面的参数直接指向工作区：
-
-```bash
-cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_RKIT=/home/rangersly/poll
-```
-
-确认消费方没有构建示例和测试：
+确认消费方没有构建示例和测试:
 
 ```bash
 cmake --build build --target help
@@ -187,27 +181,55 @@ cmake --build build --target help
 
 ### 固定版本
 
-本地开发可以用 `main`，需要可复现构建时改成提交哈希：
+需要可复现构建时用提交哈希:
 
 ```cmake
 GIT_TAG <commit-hash>
 ```
 
-以后把仓库推到远端时，只需替换地址和 tag：
-
-```cmake
-GIT_REPOSITORY git@github.com:you/rkit.git
-GIT_TAG v2.2.0
-```
-
-### 更新本地依赖
-
-修改本仓库并提交后，如果消费方没有自动更新，删除缓存再重新配置：
+修改本仓库并提交后，如果消费方没有自动更新，删除缓存再重新配置:
 
 ```bash
 rm -rf build/_deps/rkit-*
 cmake -S . -B build
 ```
+
+### 从本地仓库引用(备用)
+
+无需联网时，用 `FETCHCONTENT_SOURCE_DIR_RKIT` 直接指向本仓库的工作区，跳过 `git clone` 且包含未提交的改动。
+
+消费方 CMakeLists.txt:
+
+```cmake
+cmake_minimum_required(VERSION 3.21)
+project(myapp LANGUAGES C)
+
+include(FetchContent)
+FetchContent_Declare(rkit
+    GIT_REPOSITORY /home/rangersly/rkit
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(rkit)
+
+add_executable(myapp main.c)
+target_link_libraries(myapp PRIVATE rkit::rkit)
+```
+
+配置时传入工作区路径:
+
+```bash
+cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_RKIT=/home/rangersly/rkit
+```
+
+`GIT_REPOSITORY` 指向本地仓库时不会联网，但它执行的是 `git clone`，只能看到**已提交**的内容。如果本仓库还有未提交的改动，消费方拿到的仍是上一次提交的版本。需要先提交；或者直接用上面的 `FETCHCONTENT_SOURCE_DIR_RKIT` 指向工作区以拿到最新状态。
+
+确认消费方没有构建示例和测试:
+
+```bash
+cmake --build build --target help
+```
+
+目标列表中应只有 `myapp`、`rkit` 等，不应出现 `test_poll`、`test_io` 或 `test_serial`。
 
 ## mypoll API 概览
 

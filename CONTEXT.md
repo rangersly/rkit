@@ -40,7 +40,7 @@ _Avoid_: 连接、注册表项
 `poll(2)` 返回的事件位掩码,取值为 `POLLIN`、`POLLOUT`、`POLLERR`、`POLLHUP`、`POLLNVAL` 等的按位或,回传给回调。
 _Avoid_: 返回事件
 
-**事件回调 (callback / poller_cb)**:
+**事件回调 (callback / PollerCb)**:
 `PollerRun` 对每个就绪监听项调用的用户函数,签名为 `void (*)(int fd, short revents, void *user_data)`。
 _Avoid_: 处理器、handler
 

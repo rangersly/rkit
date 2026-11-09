@@ -1,6 +1,5 @@
 #include "mypoll.h"
 
-#include <errno.h>
 #include <poll.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -20,22 +19,21 @@ struct Poller {
     uint64_t generation;
 };
 
-typedef struct Poller poller_t;
-
 // 初始化poller
-static poller_t poller = {.fds = NULL,
-                          .user_data = NULL,
-                          .capacity = 0,
-                          .nfds = 0,
-                          .ready = NULL,
-                          .ready_user_data = NULL,
-                          .generation = 0};
+static struct Poller poller = {.fds = NULL,
+                               .user_data = NULL,
+                               .capacity = 0,
+                               .nfds = 0,
+                               .ready = NULL,
+                               .ready_user_data = NULL,
+                               .generation = 0};
 
 int PollerCreate(nfds_t max_fds) {
     if (max_fds == 0) {
         return -1;
     }
-    struct pollfd *fds = (struct pollfd *)calloc(max_fds, sizeof(struct pollfd));
+    struct pollfd *fds =
+        (struct pollfd *)calloc(max_fds, sizeof(struct pollfd));
     if (fds == NULL) {
         perror("PollerCreate: fds calloc fail");
         return -1;
@@ -129,7 +127,7 @@ int PollerDel(int fd, short events) {
     return -2;  // 未找到指定删除内容
 }
 
-int PollerRun(int timeout_ms, poller_cb callback, int *err_fd) {
+int PollerRun(int timeout_ms, PollerCb callback, int *err_fd) {
     if (poller.fds == NULL) {
         return -1;  // poller未创建即使用
     }

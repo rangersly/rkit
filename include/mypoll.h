@@ -1,5 +1,5 @@
-#ifndef POLL_MYPOLL_H_
-#define POLL_MYPOLL_H_
+#ifndef RKIT_MYPOLL_H_
+#define RKIT_MYPOLL_H_
 
 #include <poll.h>
 
@@ -27,7 +27,7 @@ extern "C" {
  *                      POLLERR、POLLHUP、POLLNVAL 等的按位或。
  * @param[in] user_data 注册该 (fd, events) 时传入的用户指针，可为 NULL。
  */
-typedef void (*poller_cb)(int fd, short revents, void *user_data);
+typedef void (*PollerCb)(int fd, short revents, void *user_data);
 
 /**
  * @brief 创建（或重建）全局监听池。
@@ -113,7 +113,7 @@ int PollerDel(int fd, short events);
  * @note 回调内可安全调用 PollerAdd / PollerDel；若在回调内销毁（或重建）监听池，
  *       剩余分发会中止并返回 -3，调用方应据此停止使用并视需要重新 PollerCreate。
  */
-int PollerRun(int timeout_ms, poller_cb callback, int *err_fd);
+int PollerRun(int timeout_ms, PollerCb callback, int *err_fd);
 
 #ifdef __cplusplus
 }

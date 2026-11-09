@@ -41,7 +41,7 @@
 ## 数据结构
 
 ```c
-typedef void (*poller_cb)(int fd, short revents, void *user_data);
+typedef void (*PollerCb)(int fd, short revents, void *user_data);
 ```
 
 事件就绪回调：
@@ -107,7 +107,7 @@ int PollerDel(int fd, short events);
 ### PollerRun
 
 ```c
-int PollerRun(int timeout_ms, poller_cb callback, int *err_fd);
+int PollerRun(int timeout_ms, PollerCb callback, int *err_fd);
 ```
 
 等待并分发监听池中已就绪的事件。

@@ -241,7 +241,7 @@ cmake --build build --target help
 | `void PollerDestory(void)` | 释放监听池,可重复调用 |
 | `int PollerAdd(int fd, short events, void *user_data)` | 注册一个 `(fd, events)` 监听项 |
 | `int PollerDel(int fd, short events)` | 按 `(fd, events)` 注销监听项 |
-| `int PollerRun(int timeout_ms, poller_cb callback, int *err_fd)` | 等待并分发就绪事件 |
+| `int PollerRun(int timeout_ms, PollerCb callback, int *err_fd)` | 等待并分发就绪事件 |
 
 ### 返回码
 
@@ -309,7 +309,7 @@ clang-tidy -p build src/mypoll.c src/io.c src/serial.c tests/test_poll.c tests/t
 | 类型 / 结构体 / typedef | `CamelCase` | `Poller` |
 | 函数 | `CamelCase` | `PollerCreate` |
 | 变量 / 参数 / 成员 | `snake_case` | `user_data`, `nfds` |
-| 宏 | `UPPER_CASE` | `POLL_MYPOLL_H_`, `RKIT_ARRAY_H_` |
+| 宏 | `UPPER_CASE` | `RKIT_MYPOLL_H_`, `RKIT_ARRAY_H_` |
 | 文件 | `lower_snake_case` | `mypoll.h`, `rarray.h` |
 
 具体规则以 [`.clang-tidy`](.clang-tidy) 与 [`.clang-format`](.clang-format) 为准。
